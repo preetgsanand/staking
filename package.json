@@ -1,0 +1,38 @@
+{
+  "name": "staking",
+  "version": "1.0.0",
+  "description": "",
+  "scripts": {
+    "clean": "rm -rf build",
+    "migrate": "npm run lint && truffle migrate --network ganache",
+    "migrate:reset": "npm run clean && npm run lint && truffle migrate --reset --network ganache",
+    "test": "truffle test",
+    "test:credits": "truffle test --network ganache ./test/ERC900CreditsStakeContract.test.js",
+    "lint": "npm run lint:js && npm run lint:sol",
+    "lint:js": "eslint .",
+    "lint:sol": "solium -d .",
+    "compile": "truffle compile",
+    "coverage": "./node_modules/.bin/solidity-coverage"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "openzeppelin-solidity": "^4.5.0",
+    "truffle": "^5.4.33",
+    "truffle-hdwallet-provider": "^1.0.17"
+  },
+  "devDependencies": {
+    "babel-eslint": "^8.2.3",
+    "babel-preset-env": "^1.7.0",
+    "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
+    "chai-bignumber": "^2.0.2",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb-base": "^12.1.0",
+    "eslint-plugin-import": "^2.12.0",
+    "ganache-cli": "^6.1.0",
+    "solc": "^0.8.0",
+    "solidity-coverage": "^0.5.4",
+    "solium": "^1.1.7"
+  }
+}
