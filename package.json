@@ -4,22 +4,18 @@
   "description": "",
   "scripts": {
     "clean": "rm -rf build",
-    "migrate": "npm run lint && truffle migrate --network ganache",
-    "migrate:reset": "npm run clean && npm run lint && truffle migrate --reset --network ganache",
+    "migrate": "truffle migrate --network ganache",
+    "migrate:ropsten": "truffle migrate --network ropsten",
+    "migrate:reset": "npm run clean && truffle migrate --reset --network ganache",
     "test": "truffle test",
-    "test:credits": "truffle test --network ganache ./test/ERC900CreditsStakeContract.test.js",
-    "lint": "npm run lint:js && npm run lint:sol",
-    "lint:js": "eslint .",
-    "lint:sol": "solium -d .",
-    "compile": "truffle compile",
-    "coverage": "./node_modules/.bin/solidity-coverage"
+    "compile": "truffle compile"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
     "openzeppelin-solidity": "^4.5.0",
     "truffle": "^5.4.33",
-    "truffle-hdwallet-provider": "^1.0.17"
+    "truffle-privatekey-provider": "^1.5.0"
   },
   "devDependencies": {
     "babel-eslint": "^8.2.3",

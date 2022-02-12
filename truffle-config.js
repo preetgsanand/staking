@@ -1,9 +1,9 @@
-const HDWalletProvider = require('truffle-hdwallet-provider')
+const PrivateKeyProvider = require('truffle-privatekey-provider')
 
 const infuraProvider = (network) => {
-  return new HDWalletProvider(
-      process.env.MNEMONIC,
-      `https://${network}.infura.io/${process.env.INFURA_API_KEY}`
+  return new PrivateKeyProvider(
+      process.env.PRIVATE_KEY,
+      `https://${network}.infura.io/v3/${process.env.INFURA_PROEJCT_ID}`
   )
 }
 
