@@ -54,32 +54,8 @@ contract StakingContract is StakingInterface {
     _;
   }
 
-  function getPersonalStakes(
-    address _address
-  )
-  view
-  public
-  returns(uint256[] memory, uint256[] memory, address[] memory)
-  {
-    StakeContract storage stakeContract = stakeHolders[_address];
-
-    uint256 arraySize = stakeContract.personalStakes.length - stakeContract.personalStakeIndex;
-    uint256[] memory unlockedTimestamps = new uint256[](arraySize);
-    uint256[] memory actualAmounts = new uint256[](arraySize);
-    address[] memory stakedFor = new address[](arraySize);
-
-    for (uint256 i = stakeContract.personalStakeIndex; i < stakeContract.personalStakes.length; i++) {
-      uint256 index = i - stakeContract.personalStakeIndex;
-      unlockedTimestamps[index] = stakeContract.personalStakes[i].unlockedTimestamp;
-      actualAmounts[index] = stakeContract.personalStakes[i].actualAmount;
-      stakedFor[index] = stakeContract.personalStakes[i].stakedFor;
-    }
-
-    return (
-    unlockedTimestamps,
-    actualAmounts,
-    stakedFor
-    );
+  function totalStakesFor(address _address) internal view returns (uint256) {
+    return stakeHolders[_address].personalStakes.length;
   }
 
   function createStake(
@@ -104,6 +80,7 @@ contract StakingContract is StakingInterface {
     );
 
     emit Staked(
+      totalStakesFor(_address),
       _address,
       _amount,
       totalStakedFor(_address),
@@ -111,65 +88,40 @@ contract StakingContract is StakingInterface {
   }
 
   function withdrawStake(
-    uint256 _amount,
+    uint256 _id,
     bytes memory _data
   )
   internal
   {
-    Stake storage personalStake = stakeHolders[msg.sender].personalStakes[stakeHolders[msg.sender].personalStakeIndex];
+    Stake storage personalStake = stakeHolders[msg.sender].personalStakes[_id - 1];
 
     // Check that the current stake has unlocked & matches the unstake amount
     require(
       personalStake.unlockedTimestamp <= block.timestamp,
       "The current stake hasn't unlocked yet");
 
-    require(
-      personalStake.actualAmount == _amount,
-      "The unstake amount does not match the current stake");
-
     // Transfer the staked tokens from this contract back to the sender
     // Notice that we are using transfer instead of transferFrom here, so
     //  no approval is needed beforehand.
     require(
-      stakingToken.transfer(msg.sender, _amount),
+      stakingToken.transfer(msg.sender, personalStake.actualAmount),
       "Unable to withdraw stake");
 
     stakeHolders[personalStake.stakedFor].totalStakedFor = stakeHolders[personalStake.stakedFor].totalStakedFor - personalStake.actualAmount;
 
-    personalStake.actualAmount = 0;
-    stakeHolders[msg.sender].personalStakeIndex++;
-
     emit Unstaked(
+      _id,
       personalStake.stakedFor,
-      _amount,
+      personalStake.actualAmount,
       totalStakedFor(personalStake.stakedFor),
       _data);
+
+    personalStake.actualAmount = 0;
   }
 
-  // accessors -----------------------------------
+  // interface overrides -----------------------------------
 
-  function getPersonalStakeUnlockedTimestamps(address _address) external view returns (uint256[] memory) {
-    uint256[] memory timestamps;
-    (timestamps,,) = getPersonalStakes(_address);
-
-    return timestamps;
-  }
-
-  function getPersonalStakeActualAmounts(address _address) external view returns (uint256[] memory) {
-    uint256[] memory actualAmounts;
-    (,actualAmounts,) = getPersonalStakes(_address);
-
-    return actualAmounts;
-  }
-
-  function getPersonalStakeForAddresses(address _address) external view returns (address[] memory) {
-    address[] memory stakedFor;
-    (,,stakedFor) = getPersonalStakes(_address);
-
-    return stakedFor;
-  }
-
-  function stake(uint256 _amount, bytes memory _data) public override {
+  function stake(uint256 _amount, bytes memory _data) public virtual override {
     createStake(
       msg.sender,
       _amount,
@@ -177,7 +129,7 @@ contract StakingContract is StakingInterface {
       _data);
   }
 
-  function stakeFor(address _user, uint256 _amount, bytes memory _data) public override {
+  function stakeFor(address _user, uint256 _amount, bytes memory _data) public virtual override {
     createStake(
       _user,
       _amount,
@@ -185,14 +137,28 @@ contract StakingContract is StakingInterface {
       _data);
   }
 
-  function unstake(uint256 _amount, bytes memory _data) public override {
+  function getStake(uint256 _id) public override view returns (uint256, uint256, address) {
+    Stake storage personalStake = stakeHolders[msg.sender].personalStakes[_id - 1];
+
+    return (
+      personalStake.unlockedTimestamp,
+      personalStake.actualAmount,
+      personalStake.stakedFor
+    );
+  }
+
+  function unstake(uint256 _id, bytes memory _data) public override {
     withdrawStake(
-      _amount,
+      _id,
       _data);
   }
 
   function totalStakedFor(address _address) public override view returns (uint256) {
     return stakeHolders[_address].totalStakedFor;
+  }
+
+  function totalStakes() public override view returns (uint256) {
+    return stakeHolders[msg.sender].personalStakes.length;
   }
 
   function totalStaked() public override view returns (uint256) {

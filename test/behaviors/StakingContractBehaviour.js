@@ -107,8 +107,8 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
           // Changing the timestamp of the next block so the stake is unlocked
           const tokenLockInDuration = await this.stakeContract.defaultLockInDuration()
           await increaseTime(tokenLockInDuration.toNumber())
-
-          await this.stakeContract.unstake(web3.utils.toBN('1'), 0x0)
+          let currentId = await this.stakeContract.totalStakes();
+          await this.stakeContract.unstake(web3.utils.toBN(currentId), 0x0)
         })
 
         describe('totalStaked', function () {
@@ -141,18 +141,13 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
         })
 
         it('should create a new personal stake with the correct properties', async function () {
-          const personalStakeUnlockedTimestamps = await this.stakeContract.getPersonalStakeUnlockedTimestamps(creator)
-          expect(personalStakeUnlockedTimestamps.length).to.equal(1);
+          const stakeId = await this.stakeContract.totalStakes()
+          const stake = await this.stakeContract.getStake(stakeId)
+
           const totalTimestamp = web3.utils.toBN(blockTimestamp).add(web3.utils.toBN(lockInDuration));
-          expect(personalStakeUnlockedTimestamps[0].toString()).to.equal(totalTimestamp.toString());
-
-          const personalStakeForAddresses = await this.stakeContract.getPersonalStakeForAddresses(creator)
-          expect(personalStakeForAddresses.length).to.equal(1)
-          expect(personalStakeForAddresses[0]).to.equal(creator);
-
-          const personalStakeAmounts = await this.stakeContract.getPersonalStakeActualAmounts(creator)
-          expect(personalStakeAmounts.length).to.equal(1);
-          expect(personalStakeAmounts[0]).to.eql(stakeAmount);
+          expect(stake[0].toString()).to.equal(totalTimestamp.toString());
+          expect(stake[1]).to.eql(stakeAmount);
+          expect(stake[2]).to.equal(creator);
         })
 
         it('should emit a Staked event', async function () {
@@ -185,12 +180,6 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
           tx = await this.stakeContract.stakeFor(otherUser, stakeAmount, 0x0)
         })
 
-        it('should create a personal stake for the staker', async function () {
-          const personalStakeForAddresses = await this.stakeContract.getPersonalStakeForAddresses(creator)
-          expect(personalStakeForAddresses.length).to.equal(1);
-          expect(personalStakeForAddresses[0]).to.equal(otherUser);
-        })
-
         it('should not change the number of tokens staked for the user', async function () {
           const totalStakedFor = await this.stakeContract.totalStakedFor(creator)
           expect(totalStakedFor).to.eql(originalTotalStakedFor);
@@ -215,22 +204,16 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
     })
 
     describe('unstake', function () {
+      let currentId;
       beforeEach(async function () {
         await this.stakeContract.stake(web3.utils.toBN('10'), 0x0)
+        currentId = await this.stakeContract.totalStakes();
       })
 
       describe('when the stake is locked', function () {
         it('should revert', async function () {
           await assertRevert(
-            this.stakeContract.unstake(web3.utils.toBN('10'), 0x0)
-          )
-        })
-      })
-
-      describe('when the unstake amount is incorrect', function () {
-        it('should revert', async function () {
-          await assertRevert(
-            this.stakeContract.unstake(web3.utils.toBN('1'), 0x0)
+            this.stakeContract.unstake(web3.utils.toBN(currentId), 0x0)
           )
         })
       })
@@ -246,7 +229,7 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
 
           originalBalance = await this.erc20Token.balanceOf(creator);
 
-          tx = await this.stakeContract.unstake(unstakeAmount, 0x0);
+          tx = await this.stakeContract.unstake(web3.utils.toBN(currentId), 0x0);
         })
 
         it('should emit an Unstaked event', async function () {
@@ -258,11 +241,6 @@ const shouldBehaveLikeStakingContract = (accounts, lockInDuration) => {
           expect(logs[0].args.amount).to.eql(unstakeAmount);
           expect(logs[0].args.total).to.eql(web3.utils.toBN('0'));
           expect(logs[0].args.data).to.equal('0x00');
-        })
-
-        it('should decrement the number of the personal stakes', async function () {
-          const personalStakeUnlockedTimestamps = await this.stakeContract.getPersonalStakeUnlockedTimestamps(creator)
-          expect(personalStakeUnlockedTimestamps.length).to.equal(0);
         })
 
         it('should return the tokens back to the user', async function () {
